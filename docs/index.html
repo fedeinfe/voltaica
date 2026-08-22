@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voltaica — charge limiting for Mac laptops</title>
+<meta name="description" content="A charge limit your Mac actually holds. Sailing instead of trickle charging, heat protection, and every number the battery will tell you. €9.99 once.">
+<meta property="og:title" content="Voltaica">
+<meta property="og:description" content="Charge limiting and battery care for Mac laptops. €9.99 once, no subscription.">
+<meta property="og:image" content="https://fedeinfe.github.io/voltaica/images/icon.png">
+<link rel="icon" href="images/icon.png">
+<style>
+  :root {
+    --ink: #0a0c10;
+    --ink-2: #14171c;
+    --mint: #7bf0c0;
+    --cyan: #35c9e8;
+    --text: #f2f5f8;
+    --muted: rgba(242,245,248,.62);
+    --faint: rgba(242,245,248,.36);
+    --line: rgba(255,255,255,.12);
+    --radius: 20px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font: 16px/1.6 ui-rounded, -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .glow {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(60rem 40rem at 12% -8%, rgba(123,240,192,.20), transparent 60%),
+      radial-gradient(55rem 38rem at 92% 8%, rgba(53,201,232,.18), transparent 62%),
+      linear-gradient(180deg, var(--ink-2), var(--ink) 40%);
+  }
+  main { position: relative; z-index: 1; max-width: 1060px; margin: 0 auto; padding: 0 24px 96px; }
+  header { padding: 84px 0 56px; text-align: center; }
+  .mark { width: 108px; height: 108px; border-radius: 26px; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
+  h1 { font-size: clamp(44px, 8vw, 76px); line-height: 1.02; margin: 26px 0 12px; letter-spacing: -.03em; font-weight: 800; }
+  .tag {
+    font-size: clamp(17px, 2.6vw, 22px); color: var(--muted); max-width: 40ch;
+    margin: 0 auto 30px;
+  }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 24px; border-radius: 14px; text-decoration: none;
+    font-weight: 650; font-size: 15px; border: 1px solid transparent;
+    transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-buy {
+    background: linear-gradient(100deg, var(--mint), var(--cyan));
+    color: #06131a; box-shadow: 0 12px 34px rgba(53,201,232,.34);
+  }
+  .btn-ghost { border-color: var(--line); color: var(--text); background: rgba(255,255,255,.05); }
+  .price-note { color: var(--faint); font-size: 13.5px; margin-top: 14px; }
+  .shot { margin: 56px auto 0; max-width: 340px; }
+  .shot img { width: 100%; border-radius: 22px; box-shadow: 0 40px 90px rgba(0,0,0,.6); border: 1px solid var(--line); }
+  h2 { font-size: clamp(26px, 4vw, 36px); letter-spacing: -.02em; margin: 0 0 10px; }
+  section { padding: 72px 0 0; }
+  .lede { color: var(--muted); max-width: 62ch; margin: 0 0 34px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(248px, 1fr)); }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.03));
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 20px;
+    backdrop-filter: blur(18px);
+  }
+  .card h3 { margin: 0 0 6px; font-size: 16.5px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  .card .ico { font-size: 20px; display: block; margin-bottom: 10px; }
+  .wide { display: grid; gap: 24px; grid-template-columns: 1fr 1fr; align-items: center; }
+  .wide img { width: 100%; border-radius: 18px; border: 1px solid var(--line); box-shadow: 0 30px 70px rgba(0,0,0,.55); }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  td, th { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--faint); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: .08em; }
+  .yes { color: var(--mint); font-weight: 700; }
+  .no { color: var(--faint); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+    background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 6px;
+  }
+  pre { background: rgba(0,0,0,.42); border: 1px solid var(--line); border-radius: 14px; padding: 16px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  footer { padding: 72px 0 0; color: var(--faint); font-size: 13.5px; text-align: center; }
+  footer a { color: var(--muted); }
+  a { color: var(--cyan); }
+  @media (max-width: 720px) { .wide { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<main>
+  <header>
+    <img class="mark" src="images/icon.png" alt="Voltaica">
+    <h1>Keep the battery<br>off 100%.</h1>
+    <p class="tag">A charge limit your Mac actually holds, sailing instead of trickle charging, and every number the battery will tell you.</p>
+    <div class="cta">
+      <a class="btn btn-buy" href="buy.html">Buy — €9.99 once</a>
+      <a class="btn btn-ghost" href="https://github.com/fedeinfe/voltaica/releases">Download</a>
+      <a class="btn btn-ghost" href="https://github.com/fedeinfe/voltaica">Source</a>
+    </div>
+    <p class="price-note">14 days fully unlocked, no account, no subscription · macOS 14+ · Apple silicon and Intel</p>
+    <div class="shot"><img src="images/menu-panel.png" alt="The Voltaica menu bar panel"></div>
+  </header>
+
+  <section>
+    <h2>Why bother</h2>
+    <p class="lede">A lithium pack ages fastest when it sits full and warm. A MacBook on a desk sits at 100%, warm, and the charger tops it up every time it drifts a fraction of a percent. Apple's Optimised Charging helps a little, decides for you, and shows you nothing.</p>
+    <div class="grid">
+      <div class="card"><span class="ico">🎚️</span><h3>Any limit, held</h3><p>20% to 100%, enforced by a root service, so it survives logout, sleep and a crash of the UI.</p></div>
+      <div class="card"><span class="ico">⛵</span><h3>Sailing</h3><p>Once the limit is reached the charger stays off until the charge drifts below it. Far fewer charger cycles than a hard limit.</p></div>
+      <div class="card"><span class="ico">🌡️</span><h3>Heat protection</h3><p>Pause charging while the pack is hot, which is when charging costs the most life. With a floor, so a flat battery always charges.</p></div>
+      <div class="card"><span class="ico">🔌</span><h3>Run down</h3><p>Cut adapter power and walk a full battery back to your limit instead of waiting for it to drain.</p></div>
+      <div class="card"><span class="ico">🗓️</span><h3>Scheduled top ups</h3><p>Be at 100% by 08:00 on the mornings you travel, and only those.</p></div>
+      <div class="card"><span class="ico">🩺</span><h3>Nothing hidden</h3><p>Cycle count, design vs nominal capacity, cell voltages, lifetime temperature, and the raw SMC keys behind every number.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The whole battery, on one screen</h2>
+    <p class="lede">Charge, temperature and power over time, sampled once a minute by the service, kept for 30 days, stored on your Mac and nowhere else.</p>
+    <img src="images/dashboard.png" alt="The Voltaica dashboard" style="width:100%;border-radius:18px;border:1px solid var(--line);box-shadow:0 30px 70px rgba(0,0,0,.55)">
+  </section>
+
+  <section>
+    <h2>Free or paid</h2>
+    <p class="lede">Everything that reads and reports is free forever. A license unlocks the parts that make a decision for you.</p>
+    <table>
+      <tr><th>Feature</th><th style="width:5.5rem">Free</th><th style="width:5.5rem">€9.99</th></tr>
+      <tr><td>Monitoring, health, history, diagnostics</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>Firmware 80% ceiling</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>Any charge limit from 20% to 100%</td><td class="no">—</td><td class="yes">✓</td></tr>
+      <tr><td>Sailing</td><td class="no">—</td><td class="yes">✓</td></tr>
+      <tr><td>Heat protection</td><td class="no">—</td><td class="yes">✓</td></tr>
+      <tr><td>Run down, top ups, schedules, calibration</td><td class="no">—</td><td class="yes">✓</td></tr>
+      <tr><td>Macs per license</td><td class="no">—</td><td class="yes">3</td></tr>
+    </table>
+    <p class="price-note">One payment. Not a subscription, not a yearly upgrade fee. The first 14 days are the paid tier, unlocked, with nothing to enter.</p>
+  </section>
+
+  <section>
+    <h2>Honest about the root service</h2>
+    <p class="lede">Holding a charge limit means writing SMC keys, and the SMC only accepts those writes from root. So Voltaica installs one small <code>launchd</code> daemon that does the writing and nothing else: no network access, no shell, no file writes outside its own folder, and it only talks to code signed by the same developer.</p>
+    <p class="lede">It hands the charger back to macOS whenever the policy is off, when it stops, and when you remove it. If anything ever goes wrong:</p>
+    <pre><code>sudo /Applications/Voltaica.app/Contents/MacOS/voltaicactl reset</code></pre>
+    <p class="lede">And to prove the whole write path works on your Mac:</p>
+    <pre><code>/Applications/Voltaica.app/Contents/MacOS/voltaicactl selftest</code></pre>
+  </section>
+
+  <section>
+    <h2>Open where it counts</h2>
+    <p class="lede">The engine, the daemon and the CLI are GPL-3.0-or-later: that is the code that touches your hardware, so it is free software you can audit and reuse. The app itself is source available and paid. Building it yourself is free and always will be.</p>
+    <div class="cta" style="justify-content:flex-start">
+      <a class="btn btn-ghost" href="https://github.com/fedeinfe/voltaica">Read the source</a>
+      <a class="btn btn-ghost" href="https://github.com/fedeinfe/voltaica/blob/main/docs/SMC.md">Which SMC keys it writes</a>
+    </div>
+  </section>
+
+  <footer>
+    <p>Voltaica is an independent app. Not affiliated with Apple, with AppHouseKitchen, or with any other battery utility.<br>
+    Engine GPL-3.0-or-later · app © 2026 Federico Infelici · <a href="https://github.com/fedeinfe/voltaica">GitHub</a> · <a href="buy.html">Buy</a></p>
+  </footer>
+</main>
+</body>
+</html>

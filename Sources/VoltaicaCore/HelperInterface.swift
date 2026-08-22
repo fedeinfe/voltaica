@@ -11,6 +11,7 @@ public enum VoltaicaIdentifiers {
     public static let supportDirectory = "/Library/Application Support/Voltaica"
     public static let appGroupDefaults = "com.federicoinfelici.Voltaica"
     public static let website = "https://github.com/fedeinfe/voltaica"
+    public static let homepage = "https://fedeinfe.github.io/voltaica/"
 }
 
 /// The full picture the daemon reports back to any client.

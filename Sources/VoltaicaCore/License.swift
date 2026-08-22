@@ -53,7 +53,7 @@ public enum LicenseState: Sendable, Equatable {
 public enum License {
     public static let trialDays = 14
     public static let price = "€9.99"
-    public static let purchaseURL = URL(string: "https://voltaica.app/buy")!
+    public static let purchaseURL = URL(string: "https://fedeinfe.github.io/voltaica/buy.html")!
 
     /// Ed25519 public half of the signing pair. The private half never leaves Federico's machine,
     /// so a key can only be minted by whoever sold the license.

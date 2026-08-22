@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buy Voltaica — €9.99 once</title>
+<meta name="description" content="A Voltaica license: €9.99, once, three Macs, updates included.">
+<link rel="icon" href="images/icon.png">
+<!--
+  Checkout: replace the href of #checkout with the payment link (Lemon Squeezy, Paddle, Gumroad,
+  Stripe Payment Link) once the account exists. Keep the mailto fallback below it.
+-->
+<style>
+  :root { --ink:#0a0c10; --ink-2:#14171c; --mint:#7bf0c0; --cyan:#35c9e8;
+          --text:#f2f5f8; --muted:rgba(242,245,248,.62); --faint:rgba(242,245,248,.36);
+          --line:rgba(255,255,255,.12); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ink); color:var(--text);
+         font:16px/1.6 ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded",system-ui,sans-serif;
+         -webkit-font-smoothing:antialiased; }
+  .glow { position:fixed; inset:0; pointer-events:none;
+          background: radial-gradient(50rem 34rem at 20% -10%, rgba(123,240,192,.20), transparent 60%),
+                      radial-gradient(46rem 32rem at 88% 4%, rgba(53,201,232,.18), transparent 62%),
+                      linear-gradient(180deg,var(--ink-2),var(--ink) 42%); }
+  main { position:relative; max-width:640px; margin:0 auto; padding:72px 24px 80px; }
+  a.back { color:var(--faint); text-decoration:none; font-size:14px; }
+  h1 { font-size:clamp(34px,6vw,52px); letter-spacing:-.03em; margin:22px 0 8px; font-weight:800; }
+  .sub { color:var(--muted); margin:0 0 34px; }
+  .panel { background:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.03));
+           border:1px solid var(--line); border-radius:22px; padding:28px; backdrop-filter:blur(18px); }
+  .price { display:flex; align-items:baseline; gap:10px; margin-bottom:4px; }
+  .price b { font-size:52px; letter-spacing:-.03em; }
+  .price span { color:var(--muted); font-size:15px; }
+  ul { list-style:none; padding:0; margin:20px 0 26px; }
+  li { padding:8px 0; border-bottom:1px solid var(--line); font-size:15px; color:var(--muted); }
+  li b { color:var(--text); font-weight:650; }
+  li:last-child { border-bottom:0; }
+  .btn { display:block; text-align:center; padding:15px 20px; border-radius:15px;
+         text-decoration:none; font-weight:700; font-size:16px;
+         background:linear-gradient(100deg,var(--mint),var(--cyan)); color:#06131a;
+         box-shadow:0 14px 36px rgba(53,201,232,.32); }
+  .btn:hover { transform:translateY(-1px); }
+  .alt { display:block; text-align:center; margin-top:14px; color:var(--muted); font-size:14px; }
+  .fine { color:var(--faint); font-size:13px; margin-top:26px; }
+  h2 { font-size:19px; margin:44px 0 8px; }
+  p { color:var(--muted); }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px;
+         background:rgba(255,255,255,.08); padding:2px 6px; border-radius:6px; }
+  a { color:var(--cyan); }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<main>
+  <a class="back" href="index.html">← Voltaica</a>
+  <h1>One payment.<br>Then it is yours.</h1>
+  <p class="sub">No subscription, no account to create, no server to check in with.</p>
+
+  <div class="panel">
+    <div class="price"><b>€9.99</b><span>once, VAT included</span></div>
+    <ul>
+      <li><b>Three Macs</b> per license</li>
+      <li><b>Every Pro feature</b>: any charge limit, sailing, heat protection, run down, schedules, calibration</li>
+      <li><b>Updates included</b>, for as long as there are updates</li>
+      <li><b>Offline activation</b>: the key itself carries the license, nothing phones home</li>
+      <li><b>14 day trial first</b>, fully unlocked, if you have not tried it yet</li>
+    </ul>
+    <a class="btn" id="checkout" href="mailto:fede.infe1@gmail.com?subject=Voltaica%20license&amp;body=I%20would%20like%20a%20Voltaica%20license.%20Please%20send%20payment%20details.">Buy a license</a>
+    <span class="alt">Licenses are issued by hand at the moment, within a day. Card checkout is coming.</span>
+    <p class="fine">Not sure yet? The trial is the paid version, unlocked, with nothing to enter. Download it from <a href="https://github.com/fedeinfe/voltaica/releases">Releases</a>.</p>
+  </div>
+
+  <h2>Activating</h2>
+  <p>Open Voltaica, choose <b>Voltaica Pro…</b> from the menu, paste the key, press Activate. Or from a terminal:</p>
+  <p><code>/Applications/Voltaica.app/Contents/MacOS/voltaicactl license &lt;key&gt;</code></p>
+
+  <h2>Refunds</h2>
+  <p>Ask within 14 days and you get your money back, no questions. A battery tool either works on your Mac or it does not, and the self test tells you which within a minute of installing.</p>
+
+  <h2>Or build it yourself</h2>
+  <p>The engine is GPL-3.0-or-later and the app is source available: a build you make for your own Mac is free, and always will be. The license pays for the signed, notarised build and the work behind it.</p>
+</main>
+</body>
+</html>
