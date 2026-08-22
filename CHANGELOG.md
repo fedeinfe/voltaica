@@ -3,6 +3,16 @@
 All notable changes to Voltaica. Format follows [Keep a Changelog](https://keepachangelog.com);
 versions follow [semver](https://semver.org).
 
+## [1.0.1] — 2026-08-22
+
+### Fixed
+* The app quit the moment the menu bar icon was clicked. The paywall presenter was attached above
+  `.environment(model)` in every scene, so its `@Environment(AppModel.self)` lookup resolved against
+  an environment that had no model in it and trapped as soon as the panel's body ran. The presenter
+  now takes the model directly, which no modifier order can break.
+* The offscreen render harness now mirrors each scene's modifier stack exactly, so this class of bug
+  fails a build rather than a click.
+
 ## [1.0.0] — 2026-08-22
 
 First release.

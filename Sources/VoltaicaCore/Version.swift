@@ -3,7 +3,7 @@ import Foundation
 /// Single source of truth for the version. The packaging script reads these strings straight
 /// out of this file so the app, the daemon and the DMG can never disagree.
 public enum VoltaicaVersion {
-    public static let marketing = "1.0.0"
+    public static let marketing = "1.0.1"
     public static let build = "1"
     public static var full: String { "\(marketing) (\(build))" }
 }

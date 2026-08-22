@@ -198,8 +198,12 @@ struct UnlockView: View {
 
 /// Opens the unlock window whenever a locked control is touched. Applied by every scene, because
 /// `AppModel` has no way to open a window on its own.
+///
+/// The model is passed in rather than read from the environment: a modifier applied after
+/// `.environment(model)` sits above it in the hierarchy, so an `@Environment` lookup here would
+/// find nothing and trap the moment the scene's body is evaluated.
 struct PaywallPresenter: ViewModifier {
-    @Environment(AppModel.self) private var model
+    var model: AppModel
     @Environment(\.openWindow) private var openWindow
 
     func body(content: Content) -> some View {
@@ -213,7 +217,7 @@ struct PaywallPresenter: ViewModifier {
 }
 
 extension View {
-    func paywallPresenter() -> some View { modifier(PaywallPresenter()) }
+    func paywallPresenter(_ model: AppModel) -> some View { modifier(PaywallPresenter(model: model)) }
 }
 
 /// Trial countdown, and after it a quiet reminder. Never a modal, never a nag on launch.

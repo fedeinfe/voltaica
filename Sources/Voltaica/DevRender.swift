@@ -17,21 +17,45 @@ enum DevRender {
         let preferences = Preferences.shared
         populate(model)
 
-        write(MenuPanel().environment(model).environment(preferences), "menu-panel", to: root)
-        write(UnlockView().environment(model), "unlock", to: root)
-        write(SettingsWindow().environment(model).environment(preferences)
+        // Each stack below is the scene's stack, modifier for modifier. Getting the order wrong
+        // is not a cosmetic bug: a modifier applied above `.environment` reads an environment
+        // without the model in it and traps as soon as the scene's body runs.
+        write(MenuPanel()
+                .environment(model)
+                .environment(preferences)
+                .paywallPresenter(model), "menu-panel", to: root)
+        write(UnlockView()
+                .environment(model)
+                .environment(preferences), "unlock", to: root)
+        write(SettingsWindow()
+                .environment(model)
+                .environment(preferences)
+                .paywallPresenter(model)
                 .frame(width: 560, height: 780), "settings", to: root)
-        write(DashboardView().environment(model).environment(preferences)
+        write(DashboardView()
+                .environment(model)
+                .environment(preferences)
+                .paywallPresenter(model)
                 .frame(width: 880, height: 760), "dashboard", to: root)
-        write(AboutView().environment(model).frame(width: 420, height: 470), "about", to: root)
-        write(OnboardingView {}.environment(model).environment(preferences)
+        write(AboutView()
+                .environment(model)
+                .environment(preferences)
+                .frame(width: 420, height: 470), "about", to: root)
+        write(OnboardingView {}
+                .environment(model)
+                .environment(preferences)
                 .frame(width: 520, height: 460), "onboarding", to: root)
 
         // The trial banner reads differently once the trial is gone, and that is the state most
         // users will actually look at.
         model.firstRun = Date().addingTimeInterval(-30 * 86_400)
-        write(MenuPanel().environment(model).environment(preferences), "menu-panel-free", to: root)
-        write(UnlockView().environment(model), "unlock-expired", to: root)
+        write(MenuPanel()
+                .environment(model)
+                .environment(preferences)
+                .paywallPresenter(model), "menu-panel-free", to: root)
+        write(UnlockView()
+                .environment(model)
+                .environment(preferences), "unlock-expired", to: root)
     }
 
     private static func populate(_ model: AppModel) {

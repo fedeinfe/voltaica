@@ -13,7 +13,7 @@ struct VoltaicaApp: App {
             MenuPanel()
                 .environment(model)
                 .environment(preferences)
-                .paywallPresenter()
+                .paywallPresenter(model)
                 .task { model.start() }
         } label: {
             StatusItemLabel(charge: preferences.showHardwarePercentage
@@ -31,7 +31,7 @@ struct VoltaicaApp: App {
             DashboardView()
                 .environment(model)
                 .environment(preferences)
-                .paywallPresenter()
+                .paywallPresenter(model)
                 .task { model.start() }
         }
         .defaultSize(width: 880, height: 760)
@@ -42,7 +42,7 @@ struct VoltaicaApp: App {
             SettingsWindow()
                 .environment(model)
                 .environment(preferences)
-                .paywallPresenter()
+                .paywallPresenter(model)
         }
         .defaultSize(width: 560, height: 640)
         .windowStyle(.hiddenTitleBar)
@@ -51,6 +51,7 @@ struct VoltaicaApp: App {
         Window("Voltaica Pro", id: "unlock") {
             UnlockView()
                 .environment(model)
+                .environment(preferences)
         }
         .defaultSize(width: 520, height: 700)
         .windowStyle(.hiddenTitleBar)
@@ -59,6 +60,7 @@ struct VoltaicaApp: App {
         Window("About Voltaica", id: "about") {
             AboutView()
                 .environment(model)
+                .environment(preferences)
         }
         .defaultSize(width: 420, height: 470)
         .windowStyle(.hiddenTitleBar)
