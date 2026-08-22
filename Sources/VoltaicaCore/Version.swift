@@ -4,7 +4,7 @@ import Foundation
 /// out of this file so the app, the daemon and the DMG can never disagree.
 public enum VoltaicaVersion {
     public static let marketing = "1.0.2"
-    public static let build = "5"
+    public static let build = "6"
     public static var full: String { "\(marketing) (\(build))" }
 }
 

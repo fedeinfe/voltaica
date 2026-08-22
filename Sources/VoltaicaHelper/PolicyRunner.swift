@@ -33,6 +33,7 @@ final class PolicyRunner {
     private var adapterCutVerdict: ControlVerdict = .untested
     private var chargeInhibitVerdict: ControlVerdict = .untested
     private var inhibitIgnoredSince: Date?
+    private var inhibitBaselineCapacity = 0
     private var lastRealChargeAt: Date?
     private var lastTrim = Date.distantPast
     private var lastError: String?
@@ -45,6 +46,10 @@ final class PolicyRunner {
 
     /// How long the Mac gets to actually move onto battery power after the adapter is cut.
     private let adapterCutGrace: TimeInterval = 15
+
+    /// Longer than the adapter grace: a charger winding down from a real charge is not a refusal,
+    /// so the check waits out the taper before it calls the inhibit ignored.
+    private let inhibitGrace: TimeInterval = 30
 
     private init() {}
 
@@ -188,10 +193,14 @@ final class PolicyRunner {
         }
         if charging {
             let since = inhibitIgnoredSince ?? Date()
+            if inhibitIgnoredSince == nil { inhibitBaselineCapacity = snapshot.rawCurrentCapacity }
             inhibitIgnoredSince = since
-            if Date().timeIntervalSince(since) >= adapterCutGrace {
+            // A charger takes a moment to wind down, and current alone during that moment is not
+            // a refusal. Capacity that keeps climbing after we said stop is.
+            let stillFilling = snapshot.rawCurrentCapacity > inhibitBaselineCapacity + 20
+            if Date().timeIntervalSince(since) >= inhibitGrace, stillFilling {
                 chargeInhibitVerdict = .ignored
-                log.error("charge inhibit accepted but the charger kept pushing current")
+                log.error("charge inhibit accepted but the pack kept filling")
             }
             return
         }
