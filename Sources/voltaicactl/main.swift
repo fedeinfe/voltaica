@@ -54,7 +54,7 @@ struct CLI {
             case "heat": return try await heat(rest)
             case "smc": return try await smc(rest)
             case "smc-dump": return try await smcDump(rest.first)
-            case "selftest": return try await selftest()
+            case "selftest": return try await selftest(rest)
             case "license": return try await license(rest)
             case "reset": return try await reset()
             case "install": return install()
@@ -82,7 +82,7 @@ struct CLI {
         let config = state.configuration
 
         print("Voltaica \(state.helperVersion)")
-        print(String(format: "Charge      %.1f%%  (macOS reports %d%%)", snapshot.rawPercentage, snapshot.percentage))
+        print(String(format: "Charge      %d%%  (gauge reads %.1f%% raw)", snapshot.percentage, snapshot.rawPercentage))
         print("Mode        \(state.decision.mode.label) — \(state.decision.detail)")
         print("Limit       \(config.enabled ? "\(config.clampedLimit)%" : "off")"
               + (config.sailingEnabled ? ", sailing \(config.sailingDepth)%" : ""))
@@ -180,8 +180,13 @@ struct CLI {
         let requested = keys.isEmpty
             ? ["CH0B", "CH0C", "CH0I", "CHWA", "ACLC", "BCLM", "TB0T", "CHBI", "CHBV"]
             : keys
-        // Reading the SMC directly works for anyone the kernel lets open the user client; the
-        // daemon is only needed when that is refused.
+        // The daemon runs as root and the SMC answers root for keys it hides from everyone else,
+        // so ask it first and only read directly when it is not up.
+        if getuid() != 0, let values = try? await client.readSMC(keys: requested), !values.isEmpty {
+            for (key, value) in values.sorted(by: { $0.key < $1.key }) { print("\(key)  \(value)") }
+            print("— via background service (root)")
+            return 0
+        }
         if let connection = try? SMCConnection() {
             let hardware = PowerHardware(smc: connection)
             for (key, value) in hardware.readRaw(keys: requested).sorted(by: { $0.key < $1.key }) {
@@ -264,7 +269,8 @@ struct CLI {
 
     /// Proves the write path end to end: what the daemon thinks it can do, then an inhibit and a
     /// restore on the real charger. This is the one command worth running after installing.
-    private func selftest() async throws -> Int32 {
+    private func selftest(_ arguments: [String] = []) async throws -> Int32 {
+        let testDischarge = arguments.contains("--discharge")
         print("Voltaica self test \(VoltaicaVersion.full)")
         print("")
 
@@ -280,40 +286,98 @@ struct CLI {
 
         print("service      \(state.helperVersion), up since \(state.startedAt.formatted(date: .omitted, time: .shortened))")
         let caps = state.capabilities
-        line("inhibit charging (CH0B/CH0C)", caps.canInhibitCharging)
-        line("cut adapter (CH0I)", caps.canCutAdapter)
+        print("backend      \(caps.usesSmartBatteryUserClient ? "AppleSmartBatteryManager user client" : "SMC charger keys")")
+        line("inhibit charging", caps.canInhibitCharging)
+        line("cut adapter (discharge)", caps.canCutAdapter)
         line("firmware ceiling (CHWA)", caps.hasHardwareCeiling)
         line("MagSafe LED (ACLC)", caps.hasMagSafeLED)
-        print("battery      \(state.snapshot.percentage)% , \(String(format: "%.1f", state.snapshot.temperature))°C, \(state.snapshot.cycleCount) cycles")
+        print("battery      \(state.snapshot.percentage)% (gauge \(String(format: "%.1f", state.snapshot.rawPercentage))% raw), \(String(format: "%.1f", state.snapshot.temperature))°C, \(state.snapshot.cycleCount) cycles")
         print("health       \(Int(state.snapshot.healthPercent.rounded()))% of design capacity")
+        print("electrical   \(String(format: "%.3f", state.snapshot.voltage)) V, \(Int(state.snapshot.amperage)) mA, \(String(format: "%.1f", state.snapshot.watts)) W")
 
+        guard state.snapshot.isPluggedIn else {
+            print("")
+            fail("unplugged — there is nothing to hold back. Plug in and run this again.")
+            return 1
+        }
         guard caps.canInhibitCharging else {
             print("")
-            fail("this Mac does not expose the charge inhibit keys to Voltaica, so a limit cannot be held")
+            fail("this Mac exposes no way to stop the charger, so a limit cannot be held")
             return 1
         }
 
-        print("")
-        print("write test   asking the service to hold at 79% for a moment…")
         let original = state.configuration
-        var probe = original
-        probe.enabled = true
-        probe.limit = max(20, min(99, state.snapshot.percentage - 1))
-        _ = try await client.apply(probe)
-        try await Task.sleep(for: .seconds(4))
-        let after = try await client.state()
-        let inhibited = !after.hardware.chargingAllowed
-        line("charger reports charging blocked", inhibited)
-        _ = try await client.apply(original)
-        print("             restored limit \(original.limit)% , enabled \(original.enabled)")
+        var failures = 0
 
         print("")
-        if inhibited {
-            print("Everything works. Voltaica can hold your battery wherever you put the slider.")
+        print("charge test  holding below the current level for a moment…")
+        var probe = original
+        probe.enabled = true
+        probe.dischargeToLimitAutomatically = false
+        probe.limit = max(20, min(99, state.snapshot.percentage - 2))
+        _ = try await client.apply(probe)
+        try await Task.sleep(for: .seconds(5))
+        let holding = try await client.state()
+        // Our own flag only records what was asked for; the battery's report is the evidence.
+        let notCharging = !holding.snapshot.isCharging && holding.snapshot.amperage <= 0
+        line("charger not pushing current", notCharging)
+        if !notCharging { failures += 1 }
+        if holding.snapshot.notChargingReason != 0 {
+            print("             reason: \(NotChargingReason.describe(holding.snapshot.notChargingReason).joined(separator: ", "))")
+        }
+
+        if testDischarge, caps.canCutAdapter {
+            print("")
+            print("discharge    cutting the adapter for 20 s, the battery should start supplying…")
+            var run = probe
+            run.discharge = DischargeRequest(target: max(20, state.snapshot.percentage - 1))
+            _ = try await client.apply(run)
+            var drained = false
+            for _ in 0..<10 {
+                try await Task.sleep(for: .seconds(2))
+                let now = try await client.state()
+                if now.snapshot.isDischargingOnAdapter { drained = true; break }
+            }
+            line("running off the battery while plugged in", drained)
+            if !drained {
+                print("             this Mac accepts the adapter cut and keeps drawing from the wall;")
+                print("             Voltaica hides the run-down button rather than pretend otherwise")
+            }
+        } else if caps.canCutAdapter {
+            print("")
+            print("discharge    skipped — pass --discharge to run the battery down for 20 s")
+        }
+        let final = try await client.state()
+        print("")
+        print("verdicts     charge inhibit: \(final.chargeInhibit.label)")
+        print("             adapter cut:    \(final.adapterCut.label)")
+        if final.chargeInhibit == .untested {
+            print("             (a full battery draws nothing either way — run this again while")
+            print("              the Mac is charging and the limit is below the current level)")
+        }
+
+        _ = try await client.apply(original)
+        print("")
+        print("             restored limit \(original.limit)%, enabled \(original.enabled)")
+        print("")
+        if failures == 0 {
+            switch final.chargeInhibit {
+            case .confirmed:
+                print("The charge limit is confirmed working on this Mac.")
+            case .untested:
+                print("The charge limit is wired up and the charger took the request. Proving it")
+                print("needs a charge in progress, so run this again while the battery is filling.")
+            case .ignored:
+                print("The charger took the request and kept charging anyway — the limit is not")
+                print("being honoured on this Mac. Please open an issue with this output.")
+            }
+            if final.adapterCut == .ignored {
+                print("Running the battery down while plugged in does not work here: this Mac keeps")
+                print("drawing from the wall, so unplug when you want the level to drop.")
+            }
             return 0
         }
-        fail("the service applied the limit but the charger did not report it blocked")
-        print("If the Mac is unplugged there is nothing to block; plug it in and run this again.")
+        fail("\(failures) check(s) failed — the service applied the policy but the hardware did not follow")
         return 1
     }
 

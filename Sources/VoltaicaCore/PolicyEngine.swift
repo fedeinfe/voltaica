@@ -62,6 +62,9 @@ public struct PolicyEngine: Sendable {
     public var isHolding = false
     public var isHeatPaused = false
     public var isDischarging = false
+    /// Set to false once the daemon has watched an adapter cut fail to move the Mac onto
+    /// battery power. Some Macs accept the request and carry on running off the wall.
+    public var adapterCutWorks = true
     private var lastMode: PolicyMode = .disabled
 
     public init() {}
@@ -70,7 +73,7 @@ public struct PolicyEngine: Sendable {
                                   snapshot: BatterySnapshot,
                                   now: Date = Date()) -> PolicyDecision {
         var decision = PolicyDecision()
-        let charge = snapshot.rawPercentage
+        let charge = snapshot.controlPercentage
         let limit = Double(config.clampedLimit)
 
         // Hysteresis is tracked regardless of what else is going on, so unplugging and
@@ -125,6 +128,34 @@ public struct PolicyEngine: Sendable {
         }
         if let until = config.pauseUntil, now >= until { config.pauseUntil = nil }
 
+        // A one-off discharge is a direct instruction, not part of the limit policy, so it has
+        // to work with the limit switched off too.
+        if let request = config.discharge {
+            let floor = max(Self.absoluteDischargeFloor, Double(config.dischargeFloor))
+            let target = max(Double(request.target), floor)
+            if charge > target + 0.5 {
+                guard adapterCutWorks else {
+                    config.discharge = nil
+                    isDischarging = false
+                    decision.mode = .charging
+                    decision.detail = "This Mac ignores the adapter cut"
+                    return finish(decision, config: &config)
+                }
+                isDischarging = true
+                decision.chargingAllowed = false
+                decision.adapterEnabled = false
+                decision.mode = .discharging
+                decision.detail = String(format: "Running down to %.0f%%", target)
+                decision.magSafeLED = .off
+                return finish(decision, config: &config)
+            }
+            config.discharge = nil
+            if isDischarging {
+                isDischarging = false
+                decision.events.append(.dischargeFinished)
+            }
+        }
+
         guard config.enabled else {
             decision.mode = .charging
             decision.detail = "Charge limit off"
@@ -175,26 +206,19 @@ public struct PolicyEngine: Sendable {
             return finish(decision, config: &config)
         }
 
-        let dischargeTarget = dischargeTarget(config: config, limit: limit)
-        if let target = dischargeTarget {
-            let floor = max(Self.absoluteDischargeFloor, Double(config.dischargeFloor))
-            if charge > max(target, floor) + 0.5 {
+        if config.dischargeToLimitAutomatically, adapterCutWorks, config.clampedLimit < 100 {
+            let target = max(limit, max(Self.absoluteDischargeFloor, Double(config.dischargeFloor)))
+            if charge > target + 0.5 {
                 isDischarging = true
+                decision.chargingAllowed = false
                 decision.adapterEnabled = false
                 decision.mode = .discharging
-                decision.detail = String(format: "Running down to %.0f%%", max(target, floor))
+                decision.detail = String(format: "Running down to %.0f%%", target)
                 decision.magSafeLED = .off
                 return finish(decision, config: &config)
-            } else if isDischarging {
-                isDischarging = false
-                if config.discharge != nil {
-                    config.discharge = nil
-                    decision.events.append(.dischargeFinished)
-                }
             }
-        } else {
-            isDischarging = false
         }
+        isDischarging = false
 
         if config.clampedLimit >= 100 {
             decision.mode = snapshot.isFullyCharged ? .holding : .charging
@@ -217,12 +241,6 @@ public struct PolicyEngine: Sendable {
         return finish(decision, config: &config)
     }
 
-    private func dischargeTarget(config: ChargeConfiguration, limit: Double) -> Double? {
-        if let request = config.discharge { return Double(request.target) }
-        if config.dischargeToLimitAutomatically, config.clampedLimit < 100 { return limit }
-        return nil
-    }
-
     // MARK: - Calibration
 
     private mutating func advanceCalibration(_ session: inout CalibrationSession,
@@ -230,7 +248,7 @@ public struct PolicyEngine: Sendable {
                                              now: Date) -> PolicyDecision {
         var decision = PolicyDecision()
         decision.mode = .calibrating
-        let charge = snapshot.rawPercentage
+        let charge = snapshot.controlPercentage
 
         switch session.phase {
         case .chargingToFull:
@@ -253,7 +271,7 @@ public struct PolicyEngine: Sendable {
             let floor = max(Self.absoluteDischargeFloor, Double(session.dischargeTarget))
             decision.detail = String(format: "Calibration: running down to %.0f%%", floor)
             decision.magSafeLED = .off
-            if charge > floor + 0.5 {
+            if charge > floor + 0.5, adapterCutWorks {
                 decision.adapterEnabled = false
             } else {
                 session.phase = .recharging

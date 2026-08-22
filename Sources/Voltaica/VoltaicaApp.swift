@@ -18,7 +18,7 @@ struct VoltaicaApp: App {
         } label: {
             StatusItemLabel(charge: preferences.showHardwarePercentage
                                     ? model.snapshot.rawPercentage
-                                    : Double(model.snapshot.percentage),
+                                    : model.snapshot.controlPercentage,
                             mode: model.decision.mode,
                             showPercentage: preferences.showPercentage,
                             coloured: preferences.colouredIcon,

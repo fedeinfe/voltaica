@@ -38,7 +38,7 @@ pauses while the pack is hot, and shows you exactly what the battery is doing.
 | **Heat protection** | Stop charging above a temperature you choose, with a floor so a nearly empty battery always charges. |
 | **Top up once** | Charge to 100% now, for a flight or a long day out, then go back to the limit by itself. |
 | **Scheduled top up** | Be full by 08:00 on the days you actually travel. |
-| **Run down** | Cut adapter power and walk a full battery back down to the limit instead of waiting for it to drain. |
+| **Run down** | Cut adapter power and walk a full battery back down to the limit instead of waiting for it to drain. Not every Mac honours the request; Voltaica checks and hides the button on the ones that don't. |
 | **Guided calibration** | Full charge, soak, controlled discharge, recharge — so the percentage macOS reports means something again. |
 | **Sleep aware** | The adapter is handed back before the Mac sleeps, so a sleeping Mac never drains on the desk. |
 | **Health and history** | Cycle count, design vs nominal capacity, cell voltages, lifetime temperature, and a chart of charge, temperature and power over time. |

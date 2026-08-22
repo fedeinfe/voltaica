@@ -15,6 +15,22 @@ public enum VoltaicaIdentifiers {
 }
 
 /// The full picture the daemon reports back to any client.
+/// What the daemon has actually observed a control doing, as opposed to whether the call
+/// returned success. Accepting a request and ignoring it is a real hardware behaviour.
+public enum ControlVerdict: String, Codable, Sendable {
+    case untested
+    case confirmed
+    case ignored
+
+    public var label: String {
+        switch self {
+        case .untested: return "not observed yet"
+        case .confirmed: return "confirmed on this Mac"
+        case .ignored: return "accepted but ignored by this Mac"
+        }
+    }
+}
+
 public struct HelperState: Codable, Sendable {
     public var helperVersion: String = ""
     public var configuration = ChargeConfiguration()
@@ -30,6 +46,11 @@ public struct HelperState: Codable, Sendable {
     public var license: LicenseInfo?
     /// When this Mac first ran the daemon, which is what the trial counts from.
     public var firstRun = Date()
+    /// What the daemon has watched the charge inhibit actually do, in real use.
+    public var chargeInhibit: ControlVerdict = .untested
+    /// What the daemon has watched the adapter cut actually do. Discharge is hidden once this is
+    /// `.ignored`; a fresh plug-in, or a few points off the pack, re-tests.
+    public var adapterCut: ControlVerdict = .untested
 
     public var licenseState: LicenseState { License.state(license: license, firstRun: firstRun) }
 

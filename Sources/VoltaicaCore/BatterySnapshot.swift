@@ -8,9 +8,12 @@ public struct BatterySnapshot: Codable, Sendable, Equatable {
     public var timestamp: Date = Date()
 
     // Charge
-    /// What macOS shows in the menu bar: rounded, and pinned to 100% while trickle charging.
+    /// What macOS shows in the menu bar. On Apple Silicon this is the gauge's calibrated
+    /// state of charge, which sits a couple of points above the raw ratio near the top of the
+    /// pack and reads a flat 100% once the charger declares the battery full.
     public var percentage: Int = 0
-    /// The unrounded figure straight off the gas gauge. This is the one a charge limit acts on.
+    /// Raw capacity over raw full capacity, straight off the gas gauge. Lower than `percentage`
+    /// on a worn pack, and the figure the health readouts are built from.
     public var rawPercentage: Double = 0
     public var isCharging: Bool = false
     public var isPluggedIn: Bool = false
@@ -60,6 +63,10 @@ public struct BatterySnapshot: Codable, Sendable, Equatable {
     public var totalOperatingHours: Int = 0
 
     public init() {}
+
+    /// The number a charge limit is compared against. It has to be the one macOS shows, or a
+    /// limit of 80% would stop the charger at a percentage the user never asked for.
+    public var controlPercentage: Double { Double(percentage) }
 
     /// Apple's own health figure: how much charge the pack still nominally holds.
     public var healthPercent: Double {

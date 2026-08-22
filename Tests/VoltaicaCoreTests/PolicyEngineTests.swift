@@ -47,6 +47,58 @@ final class PolicyEngineTests: XCTestCase {
         XCTAssertTrue(resumed.chargingAllowed)
     }
 
+    /// The bug that made discharge look broken: asking for one with the limit switched off hit
+    /// the "limit off" early return and nothing ever happened.
+    func testExplicitDischargeIgnoresTheLimitSwitch() {
+        var config = ChargeConfiguration()
+        config.enabled = false
+        config.discharge = DischargeRequest(target: 50, requestedAt: now)
+        let decision = engine.evaluate(config: &config, snapshot: snapshot(percentage: 90), now: now)
+        XCTAssertEqual(decision.mode, .discharging)
+        XCTAssertFalse(decision.adapterEnabled)
+    }
+
+    func testDischargeStopsAtTheConfiguredFloor() {
+        var config = ChargeConfiguration()
+        config.dischargeFloor = 20
+        config.discharge = DischargeRequest(target: 5, requestedAt: now)
+        let running = engine.evaluate(config: &config, snapshot: snapshot(percentage: 30), now: now)
+        XCTAssertEqual(running.mode, .discharging)
+        XCTAssertTrue(running.detail.contains("20%"), "the floor wins over a lower request")
+
+        var atFloor = ChargeConfiguration()
+        atFloor.dischargeFloor = 20
+        atFloor.discharge = DischargeRequest(target: 5, requestedAt: now)
+        let stopped = engine.evaluate(config: &atFloor, snapshot: snapshot(percentage: 20), now: now)
+        XCTAssertNotEqual(stopped.mode, .discharging)
+        XCTAssertTrue(stopped.adapterEnabled)
+        XCTAssertNil(atFloor.discharge)
+    }
+
+    /// Some Macs accept the adapter cut and keep running off the wall. Promising a discharge that
+    /// will never finish is worse than saying so.
+    func testDischargeGivesUpWhenTheMacIgnoresTheCut() {
+        engine.adapterCutWorks = false
+        var config = ChargeConfiguration()
+        config.discharge = DischargeRequest(target: 50, requestedAt: now)
+        let decision = engine.evaluate(config: &config, snapshot: snapshot(percentage: 90), now: now)
+        XCTAssertTrue(decision.adapterEnabled)
+        XCTAssertNotEqual(decision.mode, .discharging)
+        XCTAssertNil(config.discharge, "a request that cannot be honoured is dropped, not queued")
+    }
+
+    /// The limit has to act on the percentage macOS shows, not the raw gauge ratio: on a worn
+    /// pack the two are several points apart and the user only ever sees one of them.
+    func testLimitFollowsTheFigureMacOSShows() {
+        var snapshot = self.snapshot(percentage: 80)
+        snapshot.rawPercentage = 76.4
+        var config = ChargeConfiguration()
+        config.limit = 80
+        let decision = engine.evaluate(config: &config, snapshot: snapshot, now: now)
+        XCTAssertEqual(decision.mode, .holding)
+        XCTAssertFalse(decision.chargingAllowed)
+    }
+
     func testEmergencyFloorAlwaysCharges() {
         var config = ChargeConfiguration()
         config.limit = 80

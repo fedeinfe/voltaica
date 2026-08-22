@@ -66,7 +66,19 @@ struct DiagnosticsTab: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionLabel(title: "What this Mac can do", systemImage: "cpu")
             capability("Hold a charge limit", model.capabilities.canInhibitCharging)
-            capability("Run down while plugged in", model.capabilities.canCutAdapter)
+            Text((model.capabilities.usesSmartBatteryUserClient
+                  ? "Charger control via AppleSmartBatteryManager"
+                  : "Charger control via SMC keys")
+                 + " — " + model.chargeInhibitVerdict.label)
+                .font(.system(size: 11.5))
+                .foregroundStyle(.white.opacity(0.5))
+            capability("Run down while plugged in", model.canDischarge)
+            if model.adapterCutVerdict == .ignored {
+                Text("This Mac accepts the request to cut adapter power and then keeps drawing from the wall, so a forced run-down is not possible. Unplug to discharge.")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             capability("Firmware ceiling", model.capabilities.hasHardwareCeiling)
             capability("MagSafe light", model.capabilities.hasMagSafeLED)
             capability("Intel percentage ceiling", model.capabilities.hasIntelCeiling)

@@ -18,7 +18,7 @@ struct MenuPanel: View {
 
             TrialBanner()
 
-            ChargeRing(charge: model.snapshot.rawPercentage,
+            ChargeRing(charge: model.snapshot.controlPercentage,
                        limit: model.configuration.clampedLimit,
                        limitActive: model.configuration.isLimitActive,
                        colors: colors,
@@ -164,11 +164,13 @@ struct MenuPanel: View {
                     model.discharge(to: model.configuration.clampedLimit)
                 }
             }
-            .disabled(!model.capabilities.canCutAdapter || !model.snapshot.isPluggedIn)
-            .opacity(model.capabilities.canCutAdapter && model.snapshot.isPluggedIn ? 1 : 0.4)
-            .help(model.capabilities.canCutAdapter
+            .disabled(!model.canDischarge || !model.snapshot.isPluggedIn)
+            .opacity(model.canDischarge && model.snapshot.isPluggedIn ? 1 : 0.4)
+            .help(model.canDischarge
                   ? "Run the battery down to the limit while staying plugged in"
-                  : "This Mac cannot cut adapter power")
+                  : model.adapterCutVerdict == .ignored
+                    ? "This Mac accepts the adapter cut but keeps drawing from the wall. Unplug to run the battery down."
+                    : "This Mac cannot cut adapter power")
         }
     }
 

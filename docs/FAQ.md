@@ -44,6 +44,20 @@ extra benefit is small and you lose usable runtime. 100% is fine for a week befo
 Yes, using `BCLM`/`ACEN`, which set a firmware ceiling rather than inhibiting the charger. Sailing
 and discharge are Apple silicon features; the app reports what your Mac supports.
 
+### Why is the run-down button greyed out?
+
+Because your Mac accepted the request to ignore wall power and then carried on drawing from the
+wall anyway. Voltaica waits fifteen seconds, checks whether the battery is actually supplying the
+system, and switches the feature off rather than leave you watching a percentage that never moves.
+It tries again the next time you plug in, and again once the pack has dropped a few points. Unplug
+and the battery drains normally — that is the only way down on those models.
+
+### Voltaica says 100% and the gauge readout says 96.9%. Which is right?
+
+Both. The big number is `CurrentCapacity`, the calibrated state of charge macOS itself shows, and
+it is what the charge limit is compared against. The smaller one is raw capacity over raw full
+capacity straight off the gas gauge, which sits lower on a worn pack. Diagnostics shows both.
+
 **Where is the data stored?**
 Policy and license in `/Library/Application Support/Voltaica/`, samples in `samples.jsonl` in the
 same place, trimmed to 30 days. UI preferences in the app's own defaults. Nothing leaves your Mac:

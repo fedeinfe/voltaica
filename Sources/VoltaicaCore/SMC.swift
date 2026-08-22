@@ -97,6 +97,18 @@ public final class SMCConnection {
                           type: Self.fourCharString(output.keyInfo.dataType))
     }
 
+    /// Reads a key without asking the SMC how big it is. The charger control keys refuse
+    /// `keyInfo` even for root on some firmware, so gating a read on it hides keys that are
+    /// perfectly readable when you already know the size.
+    public func readBytesForcingSize(_ key: SMCKey, size: Int) throws -> [UInt8] {
+        var input = SMCParamStruct()
+        input.key = key.code
+        input.keyInfo.dataSize = UInt32(size)
+        input.data8 = Selector.read.rawValue
+        let output = try call(input, key: key)
+        return Self.tupleToArray(output.bytes, count: size)
+    }
+
     public func readBytes(_ key: SMCKey) throws -> [UInt8] {
         let meta = try info(for: key)
         var input = SMCParamStruct()
@@ -167,6 +179,16 @@ public final class SMCConnection {
             keys.append(SMCKey(Self.fourCharString(output.key)))
         }
         return keys
+    }
+
+    /// One key by table index, so a caller can tell an enumeration gap from a short table.
+    public func key(at index: Int) throws -> SMCKey {
+        var input = SMCParamStruct()
+        input.data8 = Selector.keyFromIndex.rawValue
+        input.data32 = UInt32(index)
+        let output = try call(input, key: "#KEY")
+        guard output.key != 0 else { throw SMCError.keyNotFound("#index \(index)") }
+        return SMCKey(Self.fourCharString(output.key))
     }
 
     // MARK: - Decoding

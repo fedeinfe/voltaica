@@ -83,13 +83,15 @@ public struct HardwareCapabilities: Codable, Sendable, Equatable {
                 canCutAdapter: Bool,
                 hasHardwareCeiling: Bool,
                 hasMagSafeLED: Bool,
-                hasIntelCeiling: Bool) {
+                hasIntelCeiling: Bool,
+                usesSmartBatteryUserClient: Bool = false) {
         self.platform = platform
         self.canInhibitCharging = canInhibitCharging
         self.canCutAdapter = canCutAdapter
         self.hasHardwareCeiling = hasHardwareCeiling
         self.hasMagSafeLED = hasMagSafeLED
         self.hasIntelCeiling = hasIntelCeiling
+        self.usesSmartBatteryUserClient = usesSmartBatteryUserClient
     }
 
     public var platform: Platform
@@ -98,6 +100,9 @@ public struct HardwareCapabilities: Codable, Sendable, Equatable {
     public var hasHardwareCeiling: Bool
     public var hasMagSafeLED: Bool
     public var hasIntelCeiling: Bool
+    /// True when charger control goes through `AppleSmartBatteryManagerUserClient` rather than
+    /// the SMC. Everything on Apple Silicon from macOS 26 onwards.
+    public var usesSmartBatteryUserClient: Bool = false
 
     public static let unknown = HardwareCapabilities(platform: .current,
                                                      canInhibitCharging: false,
@@ -107,55 +112,86 @@ public struct HardwareCapabilities: Codable, Sendable, Equatable {
                                                      hasIntelCeiling: false)
 }
 
-/// Semantic wrapper over the charger keys. Root only, single threaded.
+/// Semantic wrapper over the charger controls. Root only, single threaded.
+///
+/// Two backends, tried in that order: `AppleSmartBatteryManagerUserClient`, which is what works
+/// on Apple Silicon, and the SMC charger keys, which is what works on Intel. Whichever a given
+/// Mac offers is the one that gets used; both are attempted when both are there.
 public final class PowerHardware {
     private let smc: SMCConnection
+    private let smartBattery: SmartBatteryControl?
     public let capabilities: HardwareCapabilities
 
     private static let inhibitValue: UInt8 = 0x02
     private static let allowValue: UInt8 = 0x00
 
-    public init(smc: SMCConnection) {
+    /// Last value written. The user client is write-only, so on a Mac with no charger keys this
+    /// is the only record of what was asked for.
+    private var lastChargingAllowed = true
+    private var lastAdapterEnabled = true
+
+    public init(smc: SMCConnection, smartBattery: SmartBatteryControl? = nil) {
         self.smc = smc
+        self.smartBattery = smartBattery ?? (try? SmartBatteryControl())
+        let hasUserClient = self.smartBattery != nil
         var caps = HardwareCapabilities.unknown
         caps.platform = .current
-        caps.canInhibitCharging = smc.exists(SMCKeys.chargeInhibitA) || smc.exists(SMCKeys.chargeInhibitB)
-        caps.canCutAdapter = smc.exists(SMCKeys.adapterInhibit) || smc.exists(SMCKeys.intelAdapterEnable)
+        caps.canInhibitCharging = hasUserClient
+            || smc.exists(SMCKeys.chargeInhibitA) || smc.exists(SMCKeys.chargeInhibitB)
+        caps.canCutAdapter = hasUserClient
+            || smc.exists(SMCKeys.adapterInhibit) || smc.exists(SMCKeys.intelAdapterEnable)
         caps.hasHardwareCeiling = smc.exists(SMCKeys.hardwareCeiling)
         caps.hasMagSafeLED = smc.exists(SMCKeys.magSafeLED)
         caps.hasIntelCeiling = smc.exists(SMCKeys.intelCeiling)
+        caps.usesSmartBatteryUserClient = hasUserClient
         self.capabilities = caps
     }
 
     // MARK: - Charging
 
     public func setChargingAllowed(_ allowed: Bool) throws {
-        let value = allowed ? Self.allowValue : Self.inhibitValue
         var firstError: Error?
-        for key in [SMCKeys.chargeInhibitA, SMCKeys.chargeInhibitB] where smc.exists(key) {
-            do { try smc.writeUInt8(key, value) } catch { firstError = firstError ?? error }
+        var applied = false
+        if let smartBattery {
+            do { try smartBattery.setChargeInhibited(!allowed); applied = true }
+            catch { firstError = error }
         }
-        if let firstError { throw firstError }
+        for key in [SMCKeys.chargeInhibitA, SMCKeys.chargeInhibitB] where smc.exists(key) {
+            do {
+                try smc.writeUInt8(key, allowed ? Self.allowValue : Self.inhibitValue)
+                applied = true
+            } catch { firstError = firstError ?? error }
+        }
+        guard applied else { throw firstError ?? SMCError.keyNotFound(SMCKeys.chargeInhibitA.name) }
+        lastChargingAllowed = allowed
     }
 
     public func chargingAllowed() throws -> Bool {
         for key in [SMCKeys.chargeInhibitA, SMCKeys.chargeInhibitB] where smc.exists(key) {
             if try smc.readUInt8(key) != Self.allowValue { return false }
         }
-        return true
+        return smartBattery == nil ? true : lastChargingAllowed
     }
 
     // MARK: - Adapter
 
     /// Cutting the adapter is how the Mac discharges while still plugged in.
     public func setAdapterEnabled(_ enabled: Bool) throws {
-        if smc.exists(SMCKeys.adapterInhibit) {
-            try smc.writeUInt8(SMCKeys.adapterInhibit, enabled ? 0x00 : 0x01)
-        } else if smc.exists(SMCKeys.intelAdapterEnable) {
-            try smc.writeUInt8(SMCKeys.intelAdapterEnable, enabled ? 0x01 : 0x00)
-        } else {
-            throw SMCError.keyNotFound(SMCKeys.adapterInhibit.name)
+        var firstError: Error?
+        var applied = false
+        if let smartBattery {
+            do { try smartBattery.setInflowDisabled(!enabled); applied = true }
+            catch { firstError = error }
         }
+        if smc.exists(SMCKeys.adapterInhibit) {
+            do { try smc.writeUInt8(SMCKeys.adapterInhibit, enabled ? 0x00 : 0x01); applied = true }
+            catch { firstError = firstError ?? error }
+        } else if smc.exists(SMCKeys.intelAdapterEnable) {
+            do { try smc.writeUInt8(SMCKeys.intelAdapterEnable, enabled ? 0x01 : 0x00); applied = true }
+            catch { firstError = firstError ?? error }
+        }
+        guard applied else { throw firstError ?? SMCError.keyNotFound(SMCKeys.adapterInhibit.name) }
+        lastAdapterEnabled = enabled
     }
 
     public func adapterEnabled() throws -> Bool {
@@ -165,7 +201,7 @@ public final class PowerHardware {
         if smc.exists(SMCKeys.intelAdapterEnable) {
             return try smc.readUInt8(SMCKeys.intelAdapterEnable) == 0x01
         }
-        return true
+        return smartBattery == nil ? true : lastAdapterEnabled
     }
 
     // MARK: - Firmware ceiling
@@ -222,6 +258,7 @@ public final class PowerHardware {
     /// Hands the charger back to macOS. Called on uninstall, on daemon shutdown and any time
     /// the policy is turned off, so a stopped daemon can never leave a Mac that will not charge.
     public func releaseControl() {
+        smartBattery?.releaseAll()
         try? setChargingAllowed(true)
         if capabilities.canCutAdapter { try? setAdapterEnabled(true) }
         if capabilities.hasMagSafeLED { try? setMagSafeLED(.system) }
@@ -237,7 +274,17 @@ public final class PowerHardware {
         var out: [String: String] = [:]
         for name in keys where name.utf8.count == 4 {
             let key = SMCKey(name)
-            guard let meta = try? smc.info(for: key), let bytes = try? smc.readBytes(key) else { continue }
+            guard let meta = try? smc.info(for: key), let bytes = try? smc.readBytes(key) else {
+                // Reported rather than skipped: a key that answers a forced read but refuses
+                // `keyInfo` is the difference between "absent" and "hidden", and that distinction
+                // is the whole point of a raw dump.
+                if let forced = try? smc.readBytesForcingSize(key, size: 1) {
+                    out[name] = "hidden 1-byte " + forced.map { String(format: "%02x", $0) }.joined()
+                } else {
+                    out[name] = "absent"
+                }
+                continue
+            }
             let hex = bytes.map { String(format: "%02x", $0) }.joined()
             let big = SMCConnection.decodeNumber(bytes: bytes, type: meta.type, order: .big)
             let little = SMCConnection.decodeNumber(bytes: bytes, type: meta.type, order: .little)

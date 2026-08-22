@@ -27,6 +27,13 @@ final class PolicyRunner {
     private var lastDecision = PolicyDecision()
     private var lastAppliedState: HardwarePowerState?
     private var lastReassert = Date.distantPast
+    private var adapterCutSince: Date?
+    private var adapterCutFailedAt: Double?
+    private var wasPluggedIn = false
+    private var adapterCutVerdict: ControlVerdict = .untested
+    private var chargeInhibitVerdict: ControlVerdict = .untested
+    private var inhibitIgnoredSince: Date?
+    private var lastRealChargeAt: Date?
     private var lastTrim = Date.distantPast
     private var lastError: String?
     private var timer: DispatchSourceTimer?
@@ -35,6 +42,9 @@ final class PolicyRunner {
     /// Even when nothing changes, the charger keys are rewritten this often: other software or
     /// a firmware quirk can reset them behind our back.
     private let reassertInterval: TimeInterval = 60
+
+    /// How long the Mac gets to actually move onto battery power after the adapter is cut.
+    private let adapterCutGrace: TimeInterval = 15
 
     private init() {}
 
@@ -121,6 +131,8 @@ final class PolicyRunner {
         }
 
         apply(decision)
+        verifyChargeInhibit(decision, snapshot: snapshot)
+        verifyAdapterCut(decision, snapshot: snapshot)
         lastDecision = decision
 
         if !decision.events.isEmpty {
@@ -164,6 +176,68 @@ final class PolicyRunner {
         }
     }
 
+    /// Whether the charge inhibit is doing anything can only be settled while the charger would
+    /// otherwise be pushing current, so the verdict comes from normal use rather than a synthetic
+    /// test: current was flowing, Voltaica said stop, and either it stopped or it did not.
+    private func verifyChargeInhibit(_ decision: PolicyDecision, snapshot: BatterySnapshot) {
+        let charging = snapshot.isPluggedIn && snapshot.amperage > 100
+        if charging { lastRealChargeAt = Date() }
+        guard snapshot.isPluggedIn, !decision.chargingAllowed else {
+            inhibitIgnoredSince = nil
+            return
+        }
+        if charging {
+            let since = inhibitIgnoredSince ?? Date()
+            inhibitIgnoredSince = since
+            if Date().timeIntervalSince(since) >= adapterCutGrace {
+                chargeInhibitVerdict = .ignored
+                log.error("charge inhibit accepted but the charger kept pushing current")
+            }
+            return
+        }
+        inhibitIgnoredSince = nil
+        // Only a charge that was actually running and then stopped proves anything; a battery
+        // sitting full draws nothing either way.
+        if let last = lastRealChargeAt, Date().timeIntervalSince(last) < 90 {
+            chargeInhibitVerdict = .confirmed
+        }
+    }
+
+    /// Cutting the adapter is a request, not a guarantee: an M1 Pro accepts it, reports the new
+    /// charger mode and keeps drawing from the wall regardless. Watching for that beats promising
+    /// a discharge that never happens, so the feature switches itself off when the Mac ignores it.
+    private func verifyAdapterCut(_ decision: PolicyDecision, snapshot: BatterySnapshot) {
+        defer { wasPluggedIn = snapshot.isPluggedIn }
+        // Re-arm on a new power source, and again once the pack has come down a few points: the
+        // failure seen at 100% may well be the charger refusing to let go of a full battery.
+        let rearm = (snapshot.isPluggedIn && !wasPluggedIn)
+            || (adapterCutFailedAt.map { snapshot.controlPercentage <= $0 - 5 } ?? false)
+        if rearm {
+            engine.adapterCutWorks = true
+            adapterCutSince = nil
+            adapterCutFailedAt = nil
+        }
+        guard engine.adapterCutWorks, hardware?.capabilities.canCutAdapter == true else { return }
+        guard !decision.adapterEnabled, snapshot.isPluggedIn else {
+            adapterCutSince = nil
+            return
+        }
+        if snapshot.isDischargingOnAdapter {
+            adapterCutSince = nil
+            adapterCutVerdict = .confirmed
+            return
+        }
+        let since = adapterCutSince ?? Date()
+        adapterCutSince = since
+        guard Date().timeIntervalSince(since) >= adapterCutGrace else { return }
+        engine.adapterCutWorks = false
+        adapterCutVerdict = .ignored
+        adapterCutSince = nil
+        adapterCutFailedAt = snapshot.controlPercentage
+        try? hardware?.setAdapterEnabled(true)
+        log.notice("adapter cut accepted but the Mac stayed on wall power, discharge disabled")
+    }
+
     private func applyHardwareCeiling() {
         guard let hardware, hardware.capabilities.hasHardwareCeiling else { return }
         try? hardware.setHardwareCeiling(configuration.hardwareCeilingEnabled)
@@ -185,6 +259,8 @@ final class PolicyRunner {
             state.startedAt = startedAt
             state.license = license
             state.firstRun = licenseFirstRun
+            state.adapterCut = adapterCutVerdict
+            state.chargeInhibit = chargeInhibitVerdict
             return state
         }
     }

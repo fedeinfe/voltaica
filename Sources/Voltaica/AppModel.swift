@@ -23,6 +23,9 @@ final class AppModel {
     var decision = PolicyDecision()
     var hardware = HardwarePowerState(chargingAllowed: true, adapterEnabled: true)
     var capabilities = HardwareCapabilities.unknown
+    /// What the daemon has watched the two charger controls actually do on this Mac.
+    var chargeInhibitVerdict: ControlVerdict = .untested
+    var adapterCutVerdict: ControlVerdict = .untested
     var calibrationHistory = CalibrationHistory()
     var helperVersion = ""
     var helperError: String?
@@ -110,6 +113,8 @@ final class AppModel {
             decision = state.decision
             hardware = state.hardware
             capabilities = state.capabilities
+            chargeInhibitVerdict = state.chargeInhibit
+            adapterCutVerdict = state.adapterCut
             calibrationHistory = state.calibrationHistory
             license = state.license
             firstRun = state.firstRun
@@ -285,6 +290,9 @@ final class AppModel {
 
     var isTopUpActive: Bool { configuration.topUp != nil }
     var isDischargeActive: Bool { configuration.discharge != nil || decision.mode == .discharging }
+
+    /// Whether running the battery down on demand is worth offering at all.
+    var canDischarge: Bool { capabilities.canCutAdapter && adapterCutVerdict != .ignored }
     var isCalibrating: Bool { configuration.calibration?.isActive ?? false }
 
     var accentColors: [Color] { Palette.accent(for: decision.mode) }
@@ -378,7 +386,7 @@ final class AppModel {
         let content = UNMutableNotificationContent()
         content.title = event.title
         content.body = event.detail.isEmpty
-            ? String(format: "Battery at %.0f%%", snapshot.rawPercentage)
+            ? String(format: "Battery at %.0f%%", snapshot.controlPercentage)
             : event.detail
         content.sound = nil
         let request = UNNotificationRequest(identifier: event.id.uuidString,

@@ -144,6 +144,7 @@ private struct OverviewTab: View {
                     AxisValueLabel().foregroundStyle(.white.opacity(0.35))
                 } }
                 .frame(height: 74)
+                .clipped()
             }
         }
         .padding(16)
@@ -164,7 +165,7 @@ private struct OverviewTab: View {
 
     private var heroCard: some View {
         VStack(spacing: 14) {
-            ChargeRing(charge: model.snapshot.rawPercentage,
+            ChargeRing(charge: model.snapshot.controlPercentage,
                        limit: model.configuration.clampedLimit,
                        limitActive: model.configuration.isLimitActive,
                        colors: model.accentColors,
@@ -427,6 +428,7 @@ private struct HistoryTab: View {
             }
             .chartXAxis(.hidden)
             .frame(height: 130)
+            .clipped()
         }
         .padding(16)
         .frame(maxWidth: .infinity)

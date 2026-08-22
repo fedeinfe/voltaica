@@ -166,7 +166,7 @@ struct SettingsWindow: View {
                     .settingsCaption()
             }
 
-            if model.capabilities.canCutAdapter {
+            if model.canDischarge {
                 Divider().overlay(Palette.hairline)
                 Toggle("Run down to the limit instead of waiting", isOn: Binding(
                     get: { model.configuration.dischargeToLimitAutomatically },
