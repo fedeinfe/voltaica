@@ -68,6 +68,7 @@ struct VoltaicaApp: App {
 
 /// The app has no dock icon, so the first run window is created here rather than as a scene:
 /// SwiftUI has no way to present a window conditionally at launch.
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboarding: NSWindow?
 

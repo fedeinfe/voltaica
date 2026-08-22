@@ -48,12 +48,18 @@ struct GlassSurface<S: InsettableShape>: View {
                 y: elevated ? 12 : 5)
     }
 
+    // The compiler guard is not redundant with the availability check: `glassEffect` does not
+    // exist in the macOS 15 SDK at all, so an older toolchain has to not see the call.
     @ViewBuilder private var base: some View {
+        #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
             shape.fill(.clear).glassEffect(.regular, in: shape)
         } else {
             shape.fill(.ultraThinMaterial)
         }
+        #else
+        shape.fill(.ultraThinMaterial)
+        #endif
     }
 }
 
