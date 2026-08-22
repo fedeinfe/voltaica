@@ -1,0 +1,39 @@
+Voltaica App License
+Copyright © 2026 Federico Infelici. All rights reserved.
+
+This license covers the graphical application in `Sources/Voltaica` and the artwork,
+icons and marketing text in this repository. Everything else — the engine
+(`Sources/VoltaicaCore`), the background service (`Sources/VoltaicaHelper`) and the
+command line tool (`Sources/voltaicactl`) — is free software under the GNU General
+Public License, version 3 or later; see LICENSE.
+
+You may:
+
+  * read this source code, in full, for any purpose, including learning from it and
+    auditing what the app does to your Mac;
+  * build it and run your own build on machines you own or administer;
+  * modify it for your own use;
+  * quote short excerpts when discussing, reviewing or reporting problems with it.
+
+You may not, without written permission:
+
+  * redistribute this application, modified or not, in source or binary form;
+  * sell it, bundle it, or offer it as part of a paid or free service;
+  * remove or work around the licensing check in order to distribute an unlocked
+    build to other people.
+
+A paid license (one time, no subscription) covers the signed and notarised build,
+Pro features and updates on up to three Macs per license, and is what funds the
+work. Buying one is optional if you build from source for yourself; it is required
+to use a build distributed by someone else.
+
+The copyright holder may relicense this code under other terms, including under the
+GPL, at any time. Dual licensing here is deliberate: the parts that talk to your
+hardware are free software so they can be audited and reused, and the finished
+product is a paid application.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

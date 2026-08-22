@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: swift --version
+      - name: Test
+        run: swift test
+      # Ad-hoc signed: a real certificate only exists on the release machine, and the point of
+      # this job is that the bundle assembles at all.
+      - name: Build the app bundle
+        run: VOLTAICA_IDENTITY="-" ./Scripts/build.sh
+      - name: Check the bundle layout
+        run: |
+          test -x build/Voltaica.app/Contents/MacOS/Voltaica
+          test -x build/Voltaica.app/Contents/MacOS/VoltaicaHelper
+          test -x build/Voltaica.app/Contents/MacOS/voltaicactl
+          test -f build/Voltaica.app/Contents/Library/LaunchDaemons/com.federicoinfelici.Voltaica.Helper.plist
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' build/Voltaica.app/Contents/Info.plist
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Voltaica-app-unsigned
+          path: build/Voltaica.app
