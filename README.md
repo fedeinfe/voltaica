@@ -9,7 +9,9 @@ A charge limit your Mac actually holds, sailing instead of trickle charging, hea
 and every number the battery will tell you — in a menu bar app that looks like it belongs on macOS.
 
 [![CI](https://github.com/fedeinfe/voltaica/actions/workflows/ci.yml/badge.svg)](https://github.com/fedeinfe/voltaica/actions/workflows/ci.yml)
-&nbsp;·&nbsp; macOS 14+ &nbsp;·&nbsp; Apple silicon and Intel &nbsp;·&nbsp; €9.99 once, no subscription
+&nbsp;·&nbsp; macOS 14+ &nbsp;·&nbsp; Apple silicon and Intel
+
+[**voltaica website**](https://fedeinfe.github.io/voltaica/) &nbsp;·&nbsp; €9.99 once, no subscription, 14 day full trial
 
 <img src="docs/images/menu-panel.png" width="320" alt="The menu bar panel">
 
@@ -49,9 +51,14 @@ and the colour follows the policy state.
 
 ## Install
 
-Download the notarised `Voltaica.dmg` from [Releases](https://github.com/fedeinfe/voltaica/releases),
-drag it to Applications, and open it. On first run Voltaica asks to install its background service;
-approve it in **System Settings › General › Login Items & Extensions › Allow in the Background**.
+Download `Voltaica.dmg` from [Releases](https://github.com/fedeinfe/voltaica/releases), drag it to
+Applications, and open it. On first run Voltaica asks to install its background service; approve it
+in **System Settings › General › Login Items & Extensions › Allow in the Background**.
+
+> **1.0.0 is signed but not yet notarised.** It carries a real team signature (68438RG5HP) but
+> Gatekeeper still warns until a Developer ID certificate is in place, so open it with right click ›
+> Open the first time, or `xattr -dr com.apple.quarantine /Applications/Voltaica.app`. Building from
+> source avoids the question entirely.
 
 Then, to be sure the charger really obeys:
 
